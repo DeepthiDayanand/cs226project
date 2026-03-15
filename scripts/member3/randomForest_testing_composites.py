@@ -1,8 +1,16 @@
+import numpy as np
+import rasterio
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-# file paths for the composite and classification images 
-composite_path = "data/raw/composites/austin_2020_composite.tif"
-classification_path = "data/classified/austin_2020_classification.tif"
+# Navigate two levels up from scripts/member3/ to reach the project root
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+# File paths for the composite and classification images.
+# Composites are exported to the project data/ root by Member 1.
+# Classifications are written to data/classified/ by randomForest_toComposites.py.
+composite_path     = PROJECT_ROOT / "data" / "austin_2020_composite.tif"
+classification_path = PROJECT_ROOT / "data" / "classified" / "austin_2020_classification.tif"
 
 # read the three bands as float arrays 
 with rasterio.open(composite_path) as src:
