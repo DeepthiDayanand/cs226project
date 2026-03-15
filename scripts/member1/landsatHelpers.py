@@ -1,55 +1,26 @@
 import ee
 
-"""
-Member 1 - Reusable Landsat helper functions
+# Helper Function are needed, other files utilize these helpers
 
-This file contains all reusable logic for:
-- Earth Engine initialization
-- Landsat scaling
-- cloud masking
-- choosing the right Landsat collection by year
-- renaming bands into a consistent output format
-- creating city-year composites
-- creating export tasks
-"""
-
-
+# Initialize Earth Engine
 def initialize_earth_engine(project_id: str, authenticate: bool = False) -> None:
-    """
-    Initialize Earth Engine.
-
-    Parameters
-    ----------
-    project_id : str
-        Google Cloud project ID registered for Earth Engine.
-    authenticate : bool
-        Set to True only if you need to authenticate again.
-    """
     if authenticate:
         ee.Authenticate()
 
     ee.Initialize(project=project_id)
 
-
+# Convering the Landsat Surface Reflectance into what is actual Reflectance
 def apply_scale_factors(image: ee.Image) -> ee.Image:
-    """
-    Apply Collection 2 Level 2 optical reflectance scale factors.
-
-    Landsat Collection 2 Level 2 surface reflectance uses a scale factor
-    and offset for the SR_B* optical bands.
-    """
+    # Replace original bands with the scaled ones
     optical = image.select("SR_B.*").multiply(2.75e-05).add(-0.2)
     return image.addBands(optical, overwrite=True)
 
-
+# NO clouds in our images, so we have no contaiminated pixels
+# Using cloud masking 
 def mask_landsat_clouds(image: ee.Image) -> ee.Image:
-    """
-    Mask clouds and cloud shadows using the QA_PIXEL band.
-
-    This is a simple cloud mask suitable for a first project version.
-    """
     qa = image.select("QA_PIXEL")
-
+    
+    # cloud masking
     cloud_shadow_bit = 1 << 4
     cloud_bit = 1 << 3
 
@@ -59,16 +30,11 @@ def mask_landsat_clouds(image: ee.Image) -> ee.Image:
 
     return image.updateMask(mask)
 
-
+# Coordinating the Years With its Correct Landsat Model 
+# - 1990, 2000 -> Landsat 5
+# - 2010 -> Landsat 7
+# - 2020 -> Landsat 8
 def get_collection_id(year: int) -> str:
-    """
-    Choose the correct Landsat collection based on target year.
-
-    Year mapping:
-    - 1990, 2000 -> Landsat 5
-    - 2010 -> Landsat 7
-    - 2020 -> Landsat 8
-    """
     if year in [1990, 2000]:
         return "LANDSAT/LT05/C02/T1_L2"
 
@@ -82,36 +48,17 @@ def get_collection_id(year: int) -> str:
         f"Unsupported year: {year}. Use one of 1990, 2000, 2010, 2020."
     )
 
-
+# Date Window For the Target Year (Each Composite Year has Corresponding Date Window) (1990 -> 1989-01-01 to 1991-12-31)
 def get_date_window(year: int) -> tuple[str, str]:
-    """
-    Use a 3-year window centered on the target year.
-
-    Example:
-    1990 -> 1989-01-01 to 1991-12-31
-    """
     start = f"{year - 1}-01-01"
     end = f"{year + 1}-12-31"
     return start, end
 
-
+# Ensuring the Band Are Standardized For the Landsat Sensors (red, green, blue, nir)
+# Quick Logical Help (more for us)
+# Landsat 5 and Landsat 7: SR_B1 = blue, SR_B2 = green, SR_B3 = red, SR_B4 = nir
+# Landsat 8: SR_B2 = blue, SR_B3 = green, SR_B4 = red, SR_B5 = nir
 def rename_bands(image: ee.Image, year: int) -> ee.Image:
-    """
-    Rename Landsat bands into a common feature schema:
-    red, green, blue, nir
-
-    Landsat 5 and Landsat 7:
-    - SR_B1 = blue
-    - SR_B2 = green
-    - SR_B3 = red
-    - SR_B4 = nir
-
-    Landsat 8:
-    - SR_B2 = blue
-    - SR_B3 = green
-    - SR_B4 = red
-    - SR_B5 = nir
-    """
     if year in [1990, 2000, 2010]:
         return image.select(
             ["SR_B3", "SR_B2", "SR_B1", "SR_B4"],
@@ -126,20 +73,8 @@ def rename_bands(image: ee.Image, year: int) -> ee.Image:
 
     raise ValueError(f"Unsupported year for renaming: {year}")
 
-
+# For Each Composite Process Is (choose collection, filter by region and date window, scale, mask cloud, make median composite, rename bands)
 def get_composite(region: ee.Geometry, year: int) -> ee.Image:
-    """
-    Build a median Landsat composite for a given region and year.
-
-    Steps:
-    1. choose the collection
-    2. filter by region
-    3. filter by date window
-    4. scale reflectance values
-    5. mask clouds
-    6. create median composite
-    7. rename bands to red, green, blue, nir
-    """
     collection_id = get_collection_id(year)
     start_date, end_date = get_date_window(year)
 
@@ -157,11 +92,8 @@ def get_composite(region: ee.Geometry, year: int) -> ee.Image:
     return composite
 
 
+# For our return knowledge, how many images for a city and the corresponding year. Four Our Reference
 def get_image_count(region: ee.Geometry, year: int) -> int:
-    """
-    Count how many images are available before median compositing.
-    Useful as a quick sanity check.
-    """
     collection_id = get_collection_id(year)
     start_date, end_date = get_date_window(year)
 
@@ -183,7 +115,7 @@ def create_export_task(
     folder: str = "urban_expansion_exports",
 ) -> ee.batch.Task:
     """
-    Create a Google Drive export task for a composite image.
+    Google Drive export task for a composite image.
     """
     file_prefix = f"{city_name}_{year}_composite"
 

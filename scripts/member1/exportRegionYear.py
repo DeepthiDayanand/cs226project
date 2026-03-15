@@ -1,3 +1,4 @@
+#Import the landsatHelpers to be used for the Composites
 from landsatHelpers import (
     initialize_earth_engine,
     get_composite,
@@ -5,18 +6,8 @@ from landsatHelpers import (
     create_export_task,
 )
 
-"""
-Member 1 - Test export script
-
-This script exports one test composite:
-Riverside, 1990
-
-Use this first to verify:
-- Earth Engine is working
-- the region is valid
-- the export starts correctly
-- the band names are correct
-"""
+# Test exporting script, before we run it for all cities and year. Test on Riverside, 1990
+# Check: GEE Initialization, Region Geometry, Landsat (5,7,8), Composite Bands, Exporting Works
 
 PROJECT_ID = "cs224project-490217"
 CITY_NAME = "riverside"
@@ -25,24 +16,24 @@ YEAR = 1990
 
 def main():
     # Initialize Earth Engine.
-    # Set authenticate=True only if you need to log in again.
     initialize_earth_engine(PROJECT_ID, authenticate=False)
 
+    # Import Regions from other file
     from regions import REGIONS
 
     region = REGIONS[CITY_NAME]
 
-    # Quick sanity check: how many scenes are being pulled?
+    # Count satellite images for each city and corresponding year
     image_count = get_image_count(region, YEAR)
     print(f"Image count for {CITY_NAME} {YEAR}: {image_count}")
 
-    # Build the composite image.
+    # Build composite image for all images in that year
     composite = get_composite(region, YEAR)
 
-    # Confirm output band names.
+    # Output bands
     print("Band names:", composite.bandNames().getInfo())
 
-    # Create and start the export task.
+    # Start export task
     task = create_export_task(composite, region, CITY_NAME, YEAR)
     task.start()
 

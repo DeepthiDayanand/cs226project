@@ -1,4 +1,8 @@
-//modified for each Year and Landsat Data Type 
+//This was done in the GEE
+//Member 2's work was over there, but we wanted to include the scripts that we had ran in that engine
+//This script was modified for each Year and Landsat Data Type 
+//Used this to do the labeling
+//Example for Riverside, 1990
 var riverside = ee.Geometry.Rectangle([-117.55, 33.85, -117.20, 34.10]);
 
 function applyScaleFactors(image) {

@@ -1,13 +1,6 @@
 import ee
 
-"""
-Member 1 - Study region definitions
-
-This file stores the city study regions as simple bounding boxes.
-These are not meant to be perfect city boundaries yet.
-They are practical starting regions for exporting Landsat composites.
-"""
-
+# These are all the regions for each city (bounded in these boxes). For Our Use in Member 1 and Member 2. 
 REGIONS = {
     "riverside": ee.Geometry.Rectangle([-117.55, 33.85, -117.20, 34.10]),
     "phoenix": ee.Geometry.Rectangle([-112.30, 33.25, -111.90, 33.65]),

@@ -1,4 +1,9 @@
-//modified for each Year and Landsat Data Type 
+//This was done in the GEE
+//Member 2's work was over there, but we wanted to include the scripts that we had ran in that engine
+//This script was modified for each Year and Landsat Data Type 
+//This was used for classification and will be used in Training For the Other cities
+//Example for Riverside, 1990
+//Different Labels We Had Shown Below
 var trainingExtent1990 = ee.FeatureCollection([
   ee.Feature(ee.FeatureCollection(urban_1990).geometry()),
   ee.Feature(ee.FeatureCollection(veg_1990).geometry()),
@@ -7,7 +12,7 @@ var trainingExtent1990 = ee.FeatureCollection([
   ee.Feature(ee.FeatureCollection(water_1990).geometry())
 ]).geometry();
 
-// Add a modest buffer around all training polygons
+// buffer, because otherwise doesn't fully cover all of the space allocated
 var riverside = trainingExtent1990.buffer(5000).bounds();
 
 function applyScaleFactors(image) {
@@ -43,7 +48,7 @@ var image1990 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
   .median()
   .clip(riverside);
 
-// Add NDVI
+// Add NDVI (needed for all, for comparison)
 var image1990_ndvi = image1990.addBands(
   image1990.normalizedDifference(['nir', 'red']).rename('ndvi')
 );
@@ -56,9 +61,7 @@ Map.addLayer(
   'Riverside 1990 RGB'
 );
 
-// -----------------------------------------------------
-// Helper: generate random sample points inside a class polygon
-// -----------------------------------------------------
+// Helper for the random sample points inside a class polygon
 function makeRandomPoints(geomOrFc, nPoints, label, subclass, seed) {
   var geom = ee.FeatureCollection(geomOrFc)
     .geometry()
@@ -81,28 +84,21 @@ function makeRandomPoints(geomOrFc, nPoints, label, subclass, seed) {
   });
 }
 
-// -----------------------------------------------------
-// Choose balanced sample sizes
-// -----------------------------------------------------
+// Making Sure the Sample Sizes Were All Balanced Properly
 var urbanPts = makeRandomPoints(urban_1990, 300, 1, 'urban', 1);
 var vegPts   = makeRandomPoints(veg_1990,   100, 0, 'vegetation', 2);
 var farmPts  = makeRandomPoints(farm_1990,  100, 0, 'farmland', 3);
 var barePts  = makeRandomPoints(bare_1990,  100, 0, 'bare_soil', 4);
 var waterPts = makeRandomPoints(water_1990, 100, 0, 'water', 5);
 
-// Merge all labeled points
 var trainingPoints1990 = urbanPts
   .merge(vegPts)
   .merge(farmPts)
   .merge(barePts)
   .merge(waterPts);
 
-// Optional: show points on map
 Map.addLayer(trainingPoints1990, {}, 'Training Points 1990', false);
 
-// -----------------------------------------------------
-// Sample image values only at those random points
-// -----------------------------------------------------
 var samples1990 = image1990_ndvi.sampleRegions({
   collection: trainingPoints1990,
   properties: ['label', 'subclass', 'city', 'year'],
@@ -111,17 +107,13 @@ var samples1990 = image1990_ndvi.sampleRegions({
   tileScale: 4
 });
 
-// -----------------------------------------------------
-// Quick checks
-// -----------------------------------------------------
+// Quick Checks to See if Everything Works As We Expected
 print('Total 1990 samples', samples1990.size());
 print('Preview rows', samples1990.limit(10));
 print('Counts by label', samples1990.aggregate_histogram('label'));
 print('Counts by subclass', samples1990.aggregate_histogram('subclass'));
 
-// -----------------------------------------------------
-// Export to Drive
-// -----------------------------------------------------
+// Drive Exporting
 Export.table.toDrive({
   collection: samples1990,
   description: 'riverside_1990_training_samples',
